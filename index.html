@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tabuleiro Virtual RPG</title>
+<style>
+:root {
+  --bg: #080d18;
+  --panel: #111b2d;
+  --blue: #2878f0;
+  --text: #edf4ff;
+  --muted: #9aacc7;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: system-ui, sans-serif;
+}
+header {
+  background: linear-gradient(90deg,#1452a8,#2878f0);
+  padding: 14px;
+  display: flex;
+  gap: 8px;
+  flex-wrap: wrap;
+  position: sticky;
+  top: 0;
+}
+button {
+  background: #1b2d49;
+  color: white;
+  border: 1px solid #36547d;
+  padding: 10px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+button:hover { background: #29466e; }
+input, textarea, select {
+  background: #0b1423;
+  color: white;
+  border: 1px solid #304665;
+  border-radius: 8px;
+  padding: 10px;
+}
+.screen { display: none; padding: 20px; }
+.screen.active { display: block; }
+h1 { font-size: 42px; }
+.panel {
+  background: var(--panel);
+  padding: 18px;
+  border-radius: 12px;
+  margin: 12px 0;
+}
+.home-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit,minmax(180px,1fr));
+  gap: 15px;
+}
+.home-card {
+  min-height: 130px;
+  font-size: 20px;
+}
+.board {
+  display: grid;
+  gap: 2px;
+  width: max-content;
+  background: #34445b;
+  padding: 4px;
+  overflow: auto;
+}
+.cell {
+  width: 34px;
+  height: 34px;
+  border: 0;
+  border-radius: 2px;
+  padding: 0;
+}
+.grass { background: #477c45; }
+.dirt { background: #88613e; }
+.sand { background: #c5aa70; }
+.stone { background: #68717b; }
+.wood { background: #98683e; }
+.water { background: #287bb0; }
+.token {
+  width: 25px;
+  height: 25px;
+  border-radius: 50%;
+  border: 2px solid white;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  color: black;
+  font-weight: bold;
+}
+.library {
+  display: grid;
+  grid-template-columns: repeat(auto-fill,minmax(110px,1fr));
+  gap: 8px;
+}
+.library button { min-height: 80px; }
+textarea { width: 100%; min-height: 100px; }
+</style>
+</head>
+<body>
+
+<header>
+  <strong style="margin-right:auto">🎲 TABULEIRO VIRTUAL</strong>
+  <button onclick="go('home')">Início</button>
+  <button onclick="go('board')">Tabuleiro</button>
+  <button onclick="go('dice')">Dados</button>
+  <button onclick="go('notes')">Anotações</button>
+  <button onclick="go('turns')">Turnos</button>
+  <button onclick="go('sheets')">Personagens</button>
+</header>
+
+<main>
+
+<section id="home" class="screen active">
+  <h1>Bem-vindo ao Tabuleiro Virtual</h1>
+  <p>Sua central de RPG.</p>
+  <div class="home-grid">
+    <button class="home-card" onclick="go('board')">🗺️<br>Tabuleiro</button>
+    <button class="home-card" onclick="go('dice')">🎲<br>Dados</button>
+    <button class="home-card" onclick="go('notes')">📓<br>Anotações</button>
+    <button class="home-card" onclick="go('turns')">⚔️<br>Turnos</button>
+    <button class="home-card" onclick="go('sheets')">🧙<br>Personagens</button>
+  </div>
+</section>
+
+<section id="board" class="screen">
+  <h1>🗺️ Tabuleiro</h1>
+  <div class="panel">
+    <label>Largura</label>
+    <input id="width" type="number" value="21" min="4" max="60">
+    <label>Altura</label>
+    <input id="height" type="number" value="20" min="4" max="60">
+    <button onclick="createBoard()">Criar mapa</button>
+  </div>
+
+  <div class="panel">
+    <h3>Ferramentas</h3>
+    <button onclick="tool='paint'">Pintar</button>
+    <button onclick="tool='wall'">Parede</button>
+    <button onclick="tool='door'">Porta</button>
+    <button onclick="tool='erase'">Borracha</button>
+    <button onclick="openObjects()">Objetos</button>
+
+    <label>Terreno</label>
+    <select id="terrain">
+      <option value="grass">Grama</option>
+      <option value="dirt">Terra</option>
+      <option value="sand">Areia</option>
+      <option value="stone">Pedra</option>
+      <option value="wood">Madeira</option>
+      <option value="water">Água</option>
+    </select>
+  </div>
+
+  <div class="panel">
+    <h3>Personagens</h3>
+    <input id="playerName" placeholder="Nome">
+    <input id="playerColor" type="color" value="#65c7ff">
+    <button onclick="addPlayer()">Adicionar jogador</button>
+    <div id="players"></div>
+  </div>
+
+  <div class="panel" style="overflow:auto">
+    <div id="boardGrid" class="board"></div>
+  </div>
+</section>
+
+<section id="dice" class="screen">
+  <h1>🎲 Dados</h1>
+  <div class="panel">
+    <div id="diceButtons"></div>
+    <h2 id="diceResult">Resultado: —</h2>
+    <h3>Histórico</h3>
+    <div id="diceHistory"></div>
+  </div>
+</section>
+
+<section id="notes" class="screen">
+  <h1>📓 Anotações</h1>
+  <div class="panel">
+    <input id="noteTitle" placeholder="Título">
+    <select id="noteCategory">
+      <option>Geral</option>
+      <option>Missões</option>
+      <option>Personagens</option>
+      <option>NPCs</option>
+      <option>Lugares</option>
+      <option>Pistas</option>
+      <option>História</option>
+    </select>
+    <textarea id="noteBody" placeholder="Escreva sua anotação..."></textarea>
+    <button onclick="saveNote()">Salvar anotação</button>
+    <div id="noteList"></div>
+  </div>
+</section>
+
+<section id="turns" class="screen">
+  <h1>⚔️ Turnos</h1>
+  <div class="panel">
+    <input id="turnName" placeholder="Nome do jogador">
+    <button onclick="addTurnPlayer()">Adicionar</button>
+    <div id="initiativeList"></div>
+    <h2 id="currentTurn">Turnos não iniciados</h2>
+    <textarea id="actionText" placeholder="Descreva a ação..."></textarea>
+    <button onclick="saveAction()">Salvar ação</button>
+    <button onclick="skipTurn()">Pular turno</button>
+    <button onclick="resetTurns()">Resetar turnos</button>
+  </div>
+  <div class="panel">
+    <h3>Histórico</h3>
+    <div id="turnHistory"></div>
+  </div>
+</section>
+
+<section id="sheets" class="screen">
+  <h1>🧙 Personagens</h1>
+  <div class="panel">
+    <input id="sheetName" placeholder="Nome">
+    <input id="sheetHP" type="number" placeholder="Vida">
+    <textarea id="sheetDesc" placeholder="Descrição e história"></textarea>
+    <textarea id="sheetInventory" placeholder="Inventário: um item por linha"></textarea>
+    <input id="sheetEffects" placeholder="Condições">
+    <button onclick="saveSheet()">Salvar ficha</button>
+    <div id="sheetList"></div>
+  </div>
+</section>
+
+</main>
+
+<div id="objectModal" class="panel" style="display:none;position:fixed;inset:5%;z-index:10;overflow:auto">
+  <button onclick="closeObjects()">Fechar ✕</button>
+  <h2>Biblioteca de objetos</h2>
+  <input id="objectSearch" placeholder="Pesquisar objeto" oninput="renderObjects()">
+  <div id="objectLibrary" class="library"></div>
+</div>
+
+<script>
+const KEY = "tabuleiro_virtual_data";
+let data = JSON.parse(localStorage.getItem(KEY) || "{}");
+data.players ??= [];
+data.notes ??= [];
+data.turnPlayers ??= [];
+data.turnHistory ??= [];
+data.sheets ??= [];
+data.diceHistory ??= [];
+data.width ??= 21;
+data.height ??= 20;
+data.cells ??= [];
+data.objects ??= [];
+let tool = "paint";
+let selectedObject = null;
+let currentTurn = 0;
+
+function saveData() {
+  localStorage.setItem(KEY, JSON.stringify(data));
+}
+
+function go(id) {
+  document.querySelectorAll(".screen").forEach(s => s.classList.remove("active"));
+  document.getElementById(id).classList.add("active");
+  saveData();
+}
+
+function createBoard() {
+  const w = Math.max(4, Math.min(60, Number(document.getElementById("width").value)));
+  const h = Math.max(4, Math.min(60, Number(document.getElementById("height").value)));
+  data.width = w;
+  data.height = h;
+  data.cells = Array(w*h).fill("grass");
+  data.objects = [];
+  renderBoard();
+  saveData();
+}
+
+function renderBoard() {
+  const board = document.getElementById("boardGrid");
+  board.innerHTML = "";
+  board.style.gridTemplateColumns = `repeat(${data.width},34px)`;
+  for(let i=0;i<data.width*data.height;i++) {
+    const cell = document.createElement("button");
+    cell.className = "cell " + (data.cells[i] || "grass");
+    const obj = data.objects.find(o => o.index === i);
+    const player = data.players.find(p => p.index === i);
+    if(obj) cell.textContent = obj.glyph;
+    if(player) {
+      const token = document.createElement("span");
+      token.className = "token";
+      token.style.background = player.color;
+      token.textContent = player.name.slice(0,2).toUpperCase();
+      cell.appendChild(token);
+    }
+    cell.onclick = () => cellClick(i);
+    board.appendChild(cell);
+  }
+}
+
+function cellClick(i) {
+  if(selectedObject) {
+    data.objects.push({...selectedObject,index:i});
+    selectedObject = null;
+  } else if(tool === "paint") {
+    data.cells[i] = document.getElementById("terrain").value;
+  } else if(tool === "wall") {
+    data.cells[i] = "stone";
+  } else if(tool === "door") {
+    data.cells[i] = "wood";
+  } else if(tool === "erase") {
+    data.cells[i] = "grass";
+    data.objects = data.objects.filter(o => o.index !== i);
+    data.players = data.players.filter(p => p.index !== i);
+  }
+  renderBoard();
+  saveData();
+}
+
+function addPlayer() {
+  const name = document.getElementById("playerName").value.trim();
+  if(!name) return;
+  data.players.push({
+    name,
+    color: document.getElementById("playerColor").value,
+    index: -1
+  });
+  document.getElementById("players").innerHTML += `<p>${name}</p>`;
+  document.getElementById("playerName").value = "";
+  saveData();
+}
+
+const objects = [
+  ["Mesas","🪵","Mesa de madeira"],
+  ["Mesas","⬜","Mesa branca"],
+  ["Mesas","🔩","Mesa de metal"],
+  ["Mesas","⭕","Mesa redonda"],
+  ["Cadeiras","🪑","Cadeira"],
+  ["Cadeiras","💺","Poltrona"],
+  ["Cadeiras","🛋️","Sofá"],
+  ["Camas","🛏️","Cama"],
+  ["Baús","🧰","Baú"],
+  ["Baús","📦","Caixa"],
+  ["Decoração","🟫","Tapete"],
+  ["Decoração","🖼️","Quadro"],
+  ["Decoração","🪞","Espelho"],
+  ["Iluminação","🔥","Tocha"],
+  ["Iluminação","🕯️","Vela"],
+  ["Cozinha","🧊","Geladeira"],
+  ["Cozinha","♨️","Fogão"],
+  ["Eletrônicos","📺","Televisão"],
+  ["Eletrônicos","💻","Computador"],
+  ["Natureza","🌳","Árvore"],
+  ["Natureza","🌻","Flor"],
+  ["Natureza","🪨","Pedra"],
+  ["Construção","🪜","Escada"],
+  ["Construção","🪟","Janela"],
+  ["Aventura","🛢️","Barril"],
+  ["Aventura","⚔️","Armas decorativas"],
+  ["Aventura","⛺","Barraca"],
+  ["Outros","📚","Livros"],
+  ["Outros","🗺️","Mapa"],
+  ["Outros","🎒","Mochila"]
+];
+
+function openObjects() {
+  document.getElementById("objectModal").style.display = "block";
+  renderObjects();
+}
+function closeObjects() {
+  document.getElementById("objectModal").style.display = "none";
+}
+function renderObjects() {
+  const q = document.getElementById("objectSearch").value.toLowerCase();
+  const lib = document.getElementById("objectLibrary");
+  lib.innerHTML = "";
+  objects.filter(o => o[2].toLowerCase().includes(q)).forEach(o => {
+    const b = document.createElement("button");
+    b.innerHTML = `<span style="font-size:25px">${o[1]}</span><br>${o[2]}`;
+    b.onclick = () => {
+      selectedObject = {category:o[0],glyph:o[1],name:o[2]};
+      closeObjects();
+      alert("Agora clique em uma casa do tabuleiro.");
+    };
+    lib.appendChild(b);
+  });
+}
+
+function rollDie(sides) {
+  const result = Math.floor(Math.random()*sides)+1;
+  document.getElementById("diceResult").textContent = "Resultado: " + result;
+  data.diceHistory.push(`D${sides}: ${result}`);
+  renderDiceHistory();
+  saveData();
+}
+function renderDiceHistory() {
+  document.getElementById("diceHistory").innerHTML =
+    data.diceHistory.slice().reverse().map(x=>`<p>${x}</p>`).join("");
+}
+[4,6,8,10,100,12,20].forEach(n => {
+  const b = document.createElement("button");
+  b.textContent = "D" + (n===100?"%":n);
+  b.onclick = () => rollDie(n);
+  document.getElementById("diceButtons").appendChild(b);
+});
+
+function saveNote() {
+  const title = document.getElementById("noteTitle").value.trim();
+  const body = document.getElementById("noteBody").value.trim();
+  if(!title || !body) return alert("Preencha título e conteúdo.");
+  data.notes.push({
+    title,
+    body,
+    category:document.getElementById("noteCategory").value
+  });
+  document.getElementById("noteTitle").value = "";
+  document.getElementById("noteBody").value = "";
+  renderNotes();
+  saveData();
+}
+function renderNotes() {
+  document.getElementById("noteList").innerHTML =
+    data.notes.map(n=>`<div class="panel"><strong>${n.title}</strong><p>${n.category}</p><p>${n.body}</p></div>`).join("");
+}
+
+function addTurnPlayer() {
+  const n = document.getElementById("turnName").value.trim();
+  if(!n) return;
+  data.turnPlayers.push(n);
+  document.getElementById("turnName").value = "";
+  renderTurns();
+  saveData();
+}
+function renderTurns() {
+  document.getElementById("initiativeList").innerHTML =
+    data.turnPlayers.map((p,i)=>`<p>${i+1}. ${p}</p>`).join("");
+  if(data.turnPlayers.length)
+    document.getElementById("currentTurn").textContent =
+      "Turno de " + data.turnPlayers[currentTurn % data.turnPlayers.length];
+  document.getElementById("turnHistory").innerHTML =
+    data.turnHistory.map(a=>`<p><strong>${a.player}:</strong> ${a.text}</p>`).join("");
+}
+function saveAction() {
+  if(!data.turnPlayers.length) return alert("Adicione jogadores primeiro.");
+  const text = document.getElementById("actionText").value.trim();
+  if(!text) return;
+  data.turnHistory.push({
+    player:data.turnPlayers[currentTurn % data.turnPlayers.length],
+    text
+  });
+  document.getElementById("actionText").value = "";
+  skipTurn();
+}
+function skipTurn() {
+  if(!data.turnPlayers.length) return;
+  currentTurn = (currentTurn+1)%data.turnPlayers.length;
+  renderTurns();
+  saveData();
+}
+function resetTurns() {
+  if(!confirm("Tem certeza que deseja resetar os turnos?")) return;
+  if(!confirm("Sim, eu desejo resetar os turnos?")) return;
+  data.turnHistory = [];
+  currentTurn = 0;
+  renderTurns();
+  saveData();
+}
+
+function saveSheet() {
+  const name = document.getElementById("sheetName").value.trim();
+  if(!name) return;
+  data.sheets.push({
+    name,
+    hp:document.getElementById("sheetHP").value,
+    desc:document.getElementById("sheetDesc").value,
+    inventory:document.getElementById("sheetInventory").value,
+    effects:document.getElementById("sheetEffects").value
+  });
+  renderSheets();
+  saveData();
+}
+function renderSheets() {
+  document.getElementById("sheetList").innerHTML =
+    data.sheets.map(s=>`<div class="panel"><strong>${s.name}</strong><p>HP: ${s.hp}</p><p>${s.desc}</p><p>Inventário:<br>${s.inventory.replace(/\n/g,"<br>")}</p><p>${s.effects}</p></div>`).join("");
+}
+
+renderBoard();
+renderDiceHistory();
+renderNotes();
+renderTurns();
+renderSheets();
+</script>
+</body>
+</html>
